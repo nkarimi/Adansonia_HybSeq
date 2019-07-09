@@ -1,0 +1,43 @@
+#!/bin/bash
+
+#Submit this script with: sbatch thefilename
+# note: change the memory, threads, wall, etc
+
+#SBATCH -t 48:00:00   # walltime
+#SBATCH -N 1   # number of nodes in this job
+#SBATCH -n 272   # total number of processor cores in this job; each node has 272 cores
+#SBATCH -J "HapHunt"   # job name
+#SBATCH --mem=340G # how much memory you need; each box has ~340G
+#SBATCH --output=slurm-HapHunt.out
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=corrinne@iastate.edu   # email address
+
+
+# LOAD MODULES, INSERT CODE, AND RUN YOUR PROGRAMS HERE
+
+
+module load parallel/20160422
+export PATH=$PATH:/work/LAS/jfw-lab/bin # for gsnap 20180320
+module load samtools/1.2
+module load bambam/1.3
+
+# build each gmap reference
+ls *.fasta | parallel 'gmap_build -D . -d {.} {}'
+
+# map each set of reads to the individual reference
+ls *.ref.fasta | cut -f1 -d '.' | parallel 'gsnap --gunzip -n 1 -Q -t 20 -D . -d {}.ref -A sam {}.R1.fq.gz {}.R2.fq.gz > {}.sam 2>> {}.log'
+ls *.sam | parallel 'samtools view -Sb -F 4 {} -o {.}.bam 2>> {.}.log'
+ls *.bam | parallel 'samtools sort {.} {}.sort'
+ls *.sort.bam | parallel 'samtools index {}'
+
+# run HapHunt for each file
+# for A. digitata
+ls Adi* | parallel 'hapHunt -k 4 -m 20 -R 10 {}'
+# for all others
+ls [ABPS][gmprszc]* | parallel 'hapHunt -k 2 -m 20 -R 10 {}'
+
+rename _P .P *
+for a in *.fasta; do printf "${a%.fasta} `grep ">" $a | wc -l`\n" | sed 's/[ _]/\t/g' >> count.table; done
+
+rename _Gorai .Gorai *
+ls *.Gorai*fasta | cut -f2 -d '_' | sed 's/[.]fasta//g' | sort | uniq | while read line; do cat *$line.fasta > $line.fasta; done
