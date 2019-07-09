@@ -3,4 +3,4 @@
 
 
 Reads - scripts from trimming raw reads to HapHunt
-ABBA-BABA
+
