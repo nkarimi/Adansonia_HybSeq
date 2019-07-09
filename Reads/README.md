@@ -1,7 +1,4 @@
 # Adansonia_HybSeq
-#Shared repository for all analyses for the paper:
-
-
 
 Adapters.fa = file of adapter sequences for trimming
 
