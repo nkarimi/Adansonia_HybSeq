@@ -12,4 +12,5 @@ results:
 ## trait evolution
 
 - trait data in `Adansonia_floralTraits_accession.csv`
-- julia script in `traitanalysis.jl`
+- julia script in `traitanalysis.jl`, showing some screen output
+- result: `modelsummary.csv`
