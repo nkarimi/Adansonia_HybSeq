@@ -791,6 +791,7 @@ df |> CSV.write("traitanalysis/modelsummary.csv")
 #      figure for manuscript
 #---------------------------------
 
+# main:
 R"pdf"("traitanalysis/figures/Figure7.ase.pdf", width=7, height=7)
 R"layout"([1 1 1 1 2 2 2; 3 3 3 3 4 4 4]);
 plotasr(fitc1o_equal, ""; onfile=false, legend=false, ylim=[0.8,16.2], xlim=[1,3.5], coltrait=["white","orange"], radius=0.025)
@@ -801,6 +802,16 @@ plotasr(fitp1o_equal, ""; onfile=false, legendtitle="pollinator", radius=0.020)
 plotasr(fitp1i_equal, ""; onfile=false, legend=false, radius=0.025) # radius 0.016 by default
 R"dev.off"()
 
+# supplemental:
+R"pdf"("traitanalysis/figures/FigureS7.ase.pdf", width=7, height=7)
+R"layout"([1 1 1 1 2 2 2; 3 3 3 3 4 4 4]);
+plotasr(fitc2o_equal, ""; onfile=false, legend=false, ylim=[0.8,16.2], xlim=[0.9,3.2], coltrait=["white","orange"], radius=0.024)
+R"legend"(x=0.95, y=16, legend=["white", "pigmented"], pch=21, var"pt.bg"=["white","orange"],
+        bty="n", title="flower color", var"title.adj"=0, var"pt.cex"=1.5);
+plotasr(fitc2i_equal, ""; onfile=false, legend=false, ylim=[0.8,15.2], xlim=[1,3.0], coltrait=["white","orange"], radius=0.026)
+plotasr(fitp2o_equal, ""; onfile=false, legendtitle="pollinator", radius=0.021)
+plotasr(fitp2i_equal, ""; onfile=false, legend=false, radius=0.026)
+R"dev.off"()
 
 #---------------------------------
 #      package version details
