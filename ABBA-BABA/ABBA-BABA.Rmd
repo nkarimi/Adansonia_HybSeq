@@ -175,8 +175,13 @@ dat %>% filter(abs(zscore)>2.9) %>% arrange(zscore) %>% select(-quartet, -testse
 Now looking at the z-score across all quartets:
 
 ```{r, message=F}
+testset.labs = sub("O","o", sub("A","g", sub("R","r", sub("D","d", levels(dat$testset_OG)))))
+names(testset.labs) = levels(dat$testset_OG) # "BLDA" "BLDO" "BLRA" "BLRO"
 ggplot(dat, aes(x=zscore, stat(density))) + geom_histogram(bins=50) +
-  geom_vline(xintercept=0) + facet_wrap(~testset_OG, nrow=2, ncol=2, dir="v")
+  geom_vline(xintercept=0) +
+  xlab("ABBA-BABA test z-score") +
+  facet_wrap(~testset_OG, nrow=2, ncol=2, dir="v", labeller=labeller(testset_OG=testset.labs))
+ggsave("Figure5a.abba-baba.png", height=4, width=6)
 ```
 
 ```{r, fig.height=11, fig.width=10}
@@ -194,7 +199,8 @@ ggplot(dat %>% filter(testset_OG=="BLRA"), aes(x=p2, y=zscore, color=p1, shape=p
   geom_hline(yintercept=0) +
   scale_colour_manual(values=wes_palette(n=3, name="GrandBudapest1")) +
   theme(panel.grid.minor=element_blank(), axis.text.x=element_text(angle=45, hjust=1))
-ggsave("ABBA-BABA-BLRgregorii.pdf", height=2.8, width=7)
+# ggsave("ABBA-BABA-BLRgregorii.pdf", height=2.8, width=7)
+ggsave("Figure5b.abba-baba_byrep.png", height=2.8, width=6)
 ```
 
 ```{r, fig.height=6, fig.width=12}

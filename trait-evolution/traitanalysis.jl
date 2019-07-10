@@ -83,7 +83,7 @@ assume:
 """
 function plotasr(fit, file; xlim=[1,3], ylim=[0.8,15.2], tipoffset=0.15,
                  onfile=true, coltrait=["brown","grey"], radius=0.016,
-                 legpos="topright", legendtitle="")
+                 legpos="topright", legendtitle="", legend=true)
     asr = ancestralStateReconstruction(fit)
     colnames = names(asr)[3:end] # column names
     asr[:fake] = "";
@@ -105,11 +105,10 @@ function plotasr(fit, file; xlim=[1,3], ylim=[0.8,15.2], tipoffset=0.15,
         colpp = convert(Vector{Float64}, asr[i,colnames]);
         R"floating.pie.asp"(res[13][ii,:x], res[13][ii,:y], colpp, radius=radius, col=coltrait);
     end
+    if legend
     R"legend"(legpos, legend=colnames, pch=21, var"pt.bg"=coltrait,
        bty="n", title=legendtitle, var"title.adj"=0, var"pt.cex"=1.5);
-    #R"text"(res[14][7,:x], res[14][7,:y], "Africa", cex=0.9, adj=[.5,-0.4]);
-    #R"text"(res[14][29,:x], res[14][29,:y], "Madagascar", cex=0.9, adj=[.5,-0.8]);
-    #R"text"(res[14][30,:x]-0.08, res[14][30,:y], "Australia", cex=0.9, adj=[.9,-0.4]);
+    end
     if onfile R"dev.off()"; end
     return nothing
 end
@@ -786,6 +785,21 @@ df = DataFrame(
     rate2 = map(fit -> length(fit.model.rate)>1 ? fit.model.rate[2] : missing , allfit)
 )
 df |> CSV.write("traitanalysis/modelsummary.csv")
+
+
+#---------------------------------
+#      figure for manuscript
+#---------------------------------
+
+R"pdf"("traitanalysis/figures/Figure7.ase.pdf", width=7, height=7)
+R"layout"([1 1 1 1 2 2 2; 3 3 3 3 4 4 4]);
+plotasr(fitc1o_equal, ""; onfile=false, legend=false, ylim=[0.8,16.2], xlim=[1,3.5], coltrait=["white","orange"], radius=0.025)
+R"legend"(x=1.2, y=16, legend=["white", "pigmented"], pch=21, var"pt.bg"=["white","orange"],
+        bty="n", title="flower color", var"title.adj"=0, var"pt.cex"=1.5);
+plotasr(fitc1i_equal, ""; onfile=false, legend=false, ylim=[0.8,15.2], xlim=[1,3.0], coltrait=["white","orange"], radius=0.025)
+plotasr(fitp1o_equal, ""; onfile=false, legendtitle="pollinator", radius=0.020)
+plotasr(fitp1i_equal, ""; onfile=false, legend=false, radius=0.025) # radius 0.016 by default
+R"dev.off"()
 
 
 #---------------------------------
