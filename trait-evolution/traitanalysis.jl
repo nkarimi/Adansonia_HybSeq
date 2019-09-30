@@ -1,4 +1,4 @@
-# software versions: julia v1.1.1, see details at the end
+# software versions: julia v1.2.0, see details at the end
 using Statistics
 using StatsBase
 using DataFrames
@@ -26,6 +26,7 @@ fulltaxnamedict = Dict(
 #     load the various networks and data
 #--------------------------------------------------
 
+cd("..")
 # load the various phylogenies
 calnet1o = readTopology("snaq_results/BestH1_372g_calibrated.tre")
 calnet1i = readTopology("snaq_results/BestH1_noOut_372g_calibrated.tre")
@@ -47,11 +48,11 @@ assume:
 """
 function plotnet(net, file; xlim=[1.0,4.0], tipoffset=0.15, xleg=1.2, onfile=true)
   hi = findfirst([!e.isMajor for e in net.edge]) # "h"ybrid "i"ndex
-  o = [findfirst(isequal(tax), dat[:accession]) for tax in tipLabels(net)]
+  o = [findfirst(isequal(tax), dat[!,:accession]) for tax in tipLabels(net)]
   msgn = o.==nothing
-  pollab = dat[:pollination][o[.!msgn]];
+  pollab = dat[!,:pollination][o[.!msgn]];
   polpch = map(x -> (ismissing(x) ? 24 : (x=="mammal" ? 21 : 22)), pollab);
-  flolab = dat[:flowercolor][o[.!msgn]];
+  flolab = dat[!,:flowercolor][o[.!msgn]];
   flocol = map(x -> (ismissing(x) ? "grey" : x), flolab);
   if onfile R"pdf"(file, width=6, height=5); end
   R"par"(mar=[0,0,0,0]);
@@ -59,7 +60,7 @@ function plotnet(net, file; xlim=[1.0,4.0], tipoffset=0.15, xleg=1.2, onfile=tru
   hx1, hx2, hy1, hy2 = (res[i][hi] for i in 9:12); # coordinates for minor hybrid edge
   R"arrows"(hx1, hy1, hx2, hy2, col="deepskyblue", length=0.08, angle=20);
   R"text"(res[14][hi,:x]+0.03*(xlim[2]-xlim[1]), res[14][hi,:y], res[14][hi,:gam], col="deepskyblue", cex=0.75);
-  R"points"(x=res[13][:x][.!msgn].+0.05, y=res[13][:y][.!msgn], pch=polpch, bg=flocol, cex=1.5);
+  R"points"(x=res[13][!,:x][.!msgn].+0.05, y=res[13][!,:y][.!msgn], pch=polpch, bg=flocol, cex=1.5);
   R"legend"(x=xleg, y=5, legend=["mammal","hawkmoth"], pch=21:22, bty="n", title="pollinator", var"title.adj"=0);
   colnames = ["white","yellow","red"];
   R"legend"(x=xleg, y=9, legend=colnames, pch=22, var"pt.bg"=colnames, bty="n",
@@ -86,7 +87,7 @@ function plotasr(fit, file; xlim=[1,3], ylim=[0.8,15.2], tipoffset=0.15,
                  legpos="topright", legendtitle="", legend=true)
     asr = ancestralStateReconstruction(fit)
     colnames = names(asr)[3:end] # column names
-    asr[:fake] = "";
+    asr[!,:fake] .= "";
     net = deepcopy(fit.net)
     for n in net.leaf
         n.name = fulltaxnamedict[n.name]
@@ -94,19 +95,19 @@ function plotasr(fit, file; xlim=[1,3], ylim=[0.8,15.2], tipoffset=0.15,
     R"library(ape)"; # floating.pie.asp not visible from within R otherwise
     if onfile R"pdf"(file, width=6.5, height=5); end
     R"par"(mar=[0,0,0,0]);
-    res = plot(net, :R, nodeLabel = asr[[:nodenumber, :fake]], ylim=ylim,
+    res = plot(net, :R, nodeLabel = asr[!,[:nodenumber, :fake]], ylim=ylim,
             useEdgeLength=true, xlim=xlim, tipOffset=tipoffset);
     hi = findfirst([!e.isMajor for e in net.edge]) # "h"ybrid "i"ndex
     hx1, hx2, hy1, hy2 = (res[i][hi] for i in 9:12); # coordinates for minor hybrid edge
     R"arrows"(hx1, hy1, hx1+0.95*(hx2-hx1), hy1+0.95*(hy2-hy1), col="deepskyblue", length=0.08, angle=20);
     R"text"(res[14][hi,:x]+0.03*(xlim[2]-xlim[1]), res[14][hi,:y], res[14][hi,:gam], col="deepskyblue", cex=0.75);
     for i in 1:nrow(asr)
-        ii = findfirst(isequal(string(asr[:nodenumber][i])), res[13][:num]);
+        ii = findfirst(isequal(string(asr[!,:nodenumber][i])), res[13][!,:num]);
         colpp = convert(Vector{Float64}, asr[i,colnames]);
         R"floating.pie.asp"(res[13][ii,:x], res[13][ii,:y], colpp, radius=radius, col=coltrait);
     end
     if legend
-    R"legend"(legpos, legend=colnames, pch=21, var"pt.bg"=coltrait,
+      R"legend"(legpos, legend=colnames, pch=21, var"pt.bg"=coltrait,
        bty="n", title=legendtitle, var"title.adj"=0, var"pt.cex"=1.5);
     end
     if onfile R"dev.off()"; end
@@ -135,18 +136,17 @@ end
 
 # preparation for pollinator
 ipol = completecases(dat, :pollination);
-pollevels = disallowmissing(unique(dat[:pollination][ipol]))
+pollevels = disallowmissing(unique(dat[!,:pollination][ipol]))
 mpol = BinaryTraitSubstitutionModel([0.1, 0.1], pollevels);
 mpol_equal = EqualRatesSubstitutionModel(2, 0.1, pollevels);
-datpol = dropmissing!(deepcopy(dat[[:accession,:pollination]]))
-# Set(tipLabels(calnet1o_pruned)) == Set(datpol[:accession]) # true
+datpol = dropmissing!(deepcopy(dat[!,[:accession,:pollination]]))
 
 # preparation for flower color
-dat[:pigmentation] = map(x -> x=="white" ? "white" : "pigmented", dat[:flowercolor])
-collevels = unique(dat[:pigmentation])
+dat[!,:pigmentation] = map(x -> x=="white" ? "white" : "pigmented", dat[!,:flowercolor])
+collevels = unique(dat[!,:pigmentation])
 mcol = BinaryTraitSubstitutionModel([0.1, 0.1], collevels);
 mcol_equal = EqualRatesSubstitutionModel(2, 0.1, collevels);
-datcol = dat[[:accession,:pigmentation]]
+datcol = dat[!,[:accession,:pigmentation]]
 
 """
     deleteoutgroups!(net)
@@ -155,14 +155,15 @@ Delete outgroup with custom names "Pcr070","Smi165","Bce020"
 from a network, keeping the network rooted at the ingroup crown node.
 
 This is a fix for a bug with the pruned network. The bug is that
-this does not work: the loglikelihood score is always log(1/2) regardless
+using `deleteleaf!` to remove the outgroups causes the root to be
+set at a tip. Then, The loglikelihood score is always log(1/2) regardless
 of the rates, so the rates don't change during the optimization.
 
 ```julia
-fitDiscrete(calnet1o, mpol, datpol, verbose=true) # fails
+fitdiscrete(calnet1o, mpol, datpol, verbose=true) # fails
 calnet1o_pruned = deepcopy(calnet1o);
-for species in ["Pcr070","Smi165"] deleteleaf!(net, species); end
-fitDiscrete(calnet1o_pruned, mpol, datpol, verbose=true) # fails
+for species in ["Pcr070","Smi165"] deleteleaf!(calnet1o_pruned, species); end
+fitdiscrete(calnet1o_pruned, mpol, datpol, verbose=true) # fails
 # the plot below shows that Age001 is the root
 plot(calnet1o_pruned, :R, showEdgeLength=true, showEdgeNumber=true, useEdgeLength=true)
 calnet1o_pruned.node[calnet1o_pruned.root].name # root = leaf "Age001"!
@@ -211,11 +212,12 @@ end
 
 calnet1o_pruned = deepcopy(calnet1o);
 deleteoutgroups!(calnet1o_pruned)
+# Set(tipLabels(calnet1o_pruned)) == Set(datpol[!,:accession]) # true
 #plot(calnet1o, :R, showEdgeLength=true, showEdgeNumber=true)
 #plot(calnet1o_pruned, :R, showEdgeLength=true, showEdgeNumber=true, useEdgeLength=true)
 
 # unconstrained rates:
-fitp1o = fitDiscrete(calnet1o_pruned, mpol, datpol)
+fitp1o = fitdiscrete(calnet1o_pruned, mpol, datpol)
 aic(fitp1o)
 #=
 rate mammal→hawkmoth α=0.8462
@@ -226,7 +228,7 @@ aic: 17.679203122276146
 =#
 
 # equal rates: fits better
-fitp1o_equal = fitDiscrete(calnet1o_pruned, mpol_equal, datpol)
+fitp1o_equal = fitdiscrete(calnet1o_pruned, mpol_equal, datpol)
 aic(fitp1o_equal)
 show(ancestralStateReconstruction(fitp1o_equal), allrows=true)
 plotasr(fitp1o_equal, "traitanalysis/figures/primary372_withOutgroups_ase_pol.pdf")
@@ -287,7 +289,7 @@ marginal (posterior) probability that the trait evolved on each displayed tree:
 #-----------------------------------
 
 # unconstrained rates:
-fitp1i = fitDiscrete(calnet1i, mpol, dat[[:accession,:pollination]])
+fitp1i = fitdiscrete(calnet1i, mpol, dat[![:accession,:pollination]])
 aic(fitp1i)
 #=
 rate mammal→hawkmoth α=0.0
@@ -298,7 +300,7 @@ aic: 17.245933822077305
 =#
 
 # equal rates: fits better
-fitp1i_equal = fitDiscrete(calnet1i, mpol_equal, dat[[:accession,:pollination]])
+fitp1i_equal = fitdiscrete(calnet1i, mpol_equal, dat[![:accession,:pollination]])
 aic(fitp1i_equal)
 show(ancestralStateReconstruction(fitp1i_equal), allrows=true)
 plotasr(fitp1i_equal, "traitanalysis/figures/primary372_onlyIngroup_ase_pol.pdf")
@@ -356,7 +358,7 @@ calnet2o_pruned = deepcopy(calnet2o);
 deleteoutgroups!(calnet2o_pruned)
 
 # unconstrained rates:
-fitp2o = fitDiscrete(calnet2o_pruned, mpol, datpol)
+fitp2o = fitdiscrete(calnet2o_pruned, mpol, datpol)
 aic(fitp2o)
 #=
 rate mammal→hawkmoth α=0.80376
@@ -367,7 +369,7 @@ aic: 18.71575574701439
 =#
 
 # equal rates: fits better
-fitp2o_equal = fitDiscrete(calnet2o_pruned, mpol_equal, datpol)
+fitp2o_equal = fitdiscrete(calnet2o_pruned, mpol_equal, datpol)
 aic(fitp2o_equal)
 show(ancestralStateReconstruction(fitp2o_equal), allrows=true)
 plotasr(fitp2o_equal, "traitanalysis/figures/haplotype344_withOutgroups_ase_pol.pdf")
@@ -422,7 +424,7 @@ aic: 16.728951397896637
 #-------------------------------------
 
 # unconstrained rates:
-fitp2i = fitDiscrete(calnet2i, mpol, datpol)
+fitp2i = fitdiscrete(calnet2i, mpol, datpol)
 aic(fitp2i)
 #=
 rate mammal→hawkmoth α=0.0
@@ -433,7 +435,7 @@ aic: 17.244893933108358
 =#
 
 # equal rates: fits better
-fitp2i_equal = fitDiscrete(calnet2i, mpol_equal, datpol)
+fitp2i_equal = fitdiscrete(calnet2i, mpol_equal, datpol)
 aic(fitp2i_equal)
 show(ancestralStateReconstruction(fitp2i_equal), allrows=true)
 plotasr(fitp2i_equal, "traitanalysis/figures/haplotype344_onlyIngroup_ase_pol.pdf")
@@ -484,6 +486,87 @@ aic: 15.516840448250345
 │ 31  │ 31         │ 31        │ 0.977831    │ 0.0221687  │
 =#
 
+# pollinator: primary with outgroups, reticulation deleted
+#---------------------------------------------------------
+
+calnet1o_major = majorTree(calnet1o_pruned);
+#plot(calnet1o_major, :R, showEdgeLength=true, showEdgeNumber=true)
+#plot(calnet1o_pruned, :R, showEdgeLength=true, showEdgeNumber=true, useEdgeLength=true)
+
+# unconstrained rates:
+fitp1om = fitdiscrete(calnet1o_major, mpol, datpol)
+aic(fitp1om)
+#=
+Binary Trait Substitution Model:
+rate mammal→hawkmoth α=0.0
+rate hawkmoth→mammal β=0.50869
+1 traits, 15 species
+on a network with 0 reticulations
+log-likelihood: -7.2724
+aic: 18.544798801595846
+=#
+
+# equal rates: fits better
+fitp1om_equal = fitdiscrete(calnet1o_major, mpol_equal, datpol)
+aic(fitp1om_equal)
+#=
+Equal Rates Substitution Model with k=2,
+all rates equal to α=0.53296.
+rate matrix Q:
+          mammalhawkmoth
+  mammal       *  0.5330
+hawkmoth  0.5330       *
+1 traits, 15 species
+on a network with 0 reticulations
+log-likelihood: -7.32212
+aic: 16.64424446953865
+=#
+
+# likelihood ratio, to compare fit on the major tree, vs fit on network
+x2 = 2*(loglikelihood(fitp1o_equal) - loglikelihood(fitp1om_equal)) # 0.4279858901993965
+aic(fitp1om_equal) - aic(fitp1o_equal) # 0.42798589019939826
+
+
+# pollinator: primary ingroup only, reticulation deleted
+#-------------------------------------------------------
+
+calnet1i_major = majorTree(calnet1i)
+#plot(calnet1i_major, :R, showEdgeLength=true, showEdgeNumber=true)
+#plot(calnet1i, :R, showEdgeLength=true, showEdgeNumber=true, useEdgeLength=true)
+
+# unconstrained rates:
+fitp1im = fitdiscrete(calnet1i_major, mpol, dat[!,[:accession,:pollination]])
+aic(fitp1im)
+#=
+Binary Trait Substitution Model:
+rate mammal→hawkmoth α=0.0
+rate hawkmoth→mammal β=0.41379
+1 traits, 15 species
+on a network with 0 reticulations
+log-likelihood: -6.67447
+aic: 17.348943195404317
+=#
+
+# equal rates: fits better
+fitp1im_equal = fitdiscrete(calnet1i_major, mpol_equal, datpol)
+aic(fitp1im_equal)
+#=
+Equal Rates Substitution Model with k=2,
+all rates equal to α=0.36487.
+rate matrix Q:
+          mammalhawkmoth
+  mammal       *  0.3649
+hawkmoth  0.3649       *
+1 traits, 15 species
+on a network with 0 reticulations
+log-likelihood: -7.10188
+aic: 16.203756659368963
+=#
+
+# likelihood ratio, to compare fit on the major tree, vs fit on network
+x2 = 2*(loglikelihood(fitp1i_equal) - loglikelihood(fitp1im_equal)) # 0.4280517712077092
+aic(fitp1im_equal) - aic(fitp1i_equal) # 0.4280517712077092
+
 #--------------------------------------------------
 #     flower color models: 2 states
 #--------------------------------------------------
@@ -495,7 +578,7 @@ calnet1o_pruned = deepcopy(calnet1o);
 deleteleaf!(calnet1o_pruned,"Pcr070")
 
 # unconstrained rates:
-fitc1o = fitDiscrete(calnet1o_pruned, mcol, datcol)
+fitc1o = fitdiscrete(calnet1o_pruned, mcol, datcol)
 aic(fitc1o)
 #=
 rate white→pigmented α=0.22505
@@ -506,7 +589,7 @@ aic: 18.70328778409157
 =#
 
 # equal rates: fits better
-fitc1o_equal = fitDiscrete(calnet1o_pruned, mcol_equal, datcol)
+fitc1o_equal = fitdiscrete(calnet1o_pruned, mcol_equal, datcol)
 aic(fitc1o_equal)
 show(ancestralStateReconstruction(fitc1o_equal), allrows=true)
 plotasr(fitc1o_equal, "traitanalysis/figures/primary372_withOutgroups_ase_col.pdf",
@@ -564,7 +647,7 @@ aic: 17.048930650086135
 #-------------------------------------
 
 # unconstrained rates:
-fitc1i = fitDiscrete(calnet1i, mcol, datcol)
+fitc1i = fitdiscrete(calnet1i, mcol, datcol)
 aic(fitc1i)
 #=
 rate white→pigmented α=0.29114
@@ -575,7 +658,7 @@ aic: 16.204103200981013
 =#
 
 # equal rates: fits better
-fitc1i_equal = fitDiscrete(calnet1i, mcol_equal, datcol)
+fitc1i_equal = fitdiscrete(calnet1i, mcol_equal, datcol)
 aic(fitc1i_equal)
 show(ancestralStateReconstruction(fitc1i_equal), allrows=true)
 plotasr(fitc1i_equal, "traitanalysis/figures/primary372_onlyIngroup_ase_col.pdf",
@@ -634,7 +717,7 @@ calnet2o_pruned = deepcopy(calnet2o);
 for n in ["Bce020","Pcr070"] deleteleaf!(calnet2o_pruned, n); end
 
 # unconstrained rates:
-fitc2o = fitDiscrete(calnet2o_pruned, mcol, datcol)
+fitc2o = fitdiscrete(calnet2o_pruned, mcol, datcol)
 aic(fitc2o)
 #=
 rate white→pigmented α=0.17652
@@ -645,7 +728,7 @@ aic: 16.406144695367196
 =#
 
 # equal rates: fits better
-fitc2o_equal = fitDiscrete(calnet2o_pruned, mcol_equal, datcol)
+fitc2o_equal = fitdiscrete(calnet2o_pruned, mcol_equal, datcol)
 aic(fitc2o_equal)
 show(ancestralStateReconstruction(fitc2o_equal), allrows=true)
 plotasr(fitc2o_equal, "traitanalysis/figures/haplotype344_withOutgroups_ase_col.pdf",
@@ -703,7 +786,7 @@ aic: 15.279740501324724
 #-------------------------------------
 
 # unconstrained rates:
-fitc2i = fitDiscrete(calnet2i, mcol, datcol)
+fitc2i = fitdiscrete(calnet2i, mcol, datcol)
 aic(fitc2i)
 #=
 rate white→pigmented α=0.21776
@@ -714,7 +797,7 @@ aic: 16.542380322802295
 =#
 
 # equal rates: fits better
-fitc2i_equal = fitDiscrete(calnet2i, mcol_equal, datcol)
+fitc2i_equal = fitdiscrete(calnet2i, mcol_equal, datcol)
 aic(fitc2i_equal)
 show(ancestralStateReconstruction(fitc2i_equal), allrows=true)
 plotasr(fitc2i_equal, "traitanalysis/figures/haplotype344_onlyIngroup_ase_col.pdf",
@@ -765,27 +848,105 @@ aic: 14.950810664666887
 │ 31  │ 31         │ 31        │ 0.996235   │ 0.00376515 │
 =#
 
+# pigmentation: primary with outgroups, reticulation deleted
+#-----------------------------------------------------------
+
+calnet1o_major = majorTree(calnet1o_pruned);
+
+# unconstrained rates:
+fitc1om = fitdiscrete(calnet1o_major, mcol, datcol)
+aic(fitc1om)
+#=
+Binary Trait Substitution Model:
+rate white→pigmented α=0.28709
+rate pigmented→white β=0.80635
+1 traits, 16 species
+on a network with 0 reticulations
+log-likelihood: -7.65911
+aic: 19.31821021501228
+=#
+
+# equal rates: fits better
+fitc1om_equal = fitdiscrete(calnet1o_major, mcol_equal, datcol)
+aic(fitc1om_equal)
+#=
+Equal Rates Substitution Model with k=2,
+all rates equal to α=0.4707.
+rate matrix Q:
+           whitepigmented
+   white       *  0.4707
+pigmented  0.4707       *
+1 traits, 16 species
+on a network with 0 reticulations
+log-likelihood: -7.95246
+aic: 17.904920133371945
+=#
+
+# likelihood ratio, to compare fit on the major tree, vs fit on network
+x2 = 2*(loglikelihood(fitc1o_equal) - loglikelihood(fitc1om_equal)) # 0.8559894832858141
+aic(fitc1om_equal) - aic(fitc1o_equal) # 0.8559894832858106
+
+# pigmentation: primary ingroup only, reticulation deleted
+#-----------------------------------------------------------
+
+calnet1i_major = majorTree(calnet1i);
+
+# unconstrained rates:
+fitc1im = fitdiscrete(calnet1i_major, mcol, datcol)
+aic(fitc1im)
+#=
+Binary Trait Substitution Model:
+rate white→pigmented α=0.441
+rate pigmented→white β=0.0
+1 traits, 15 species
+on a network with 0 reticulations
+log-likelihood: -6.86627
+aic: 17.73254957749076
+=#
+
+# equal rates: fits better
+fitc1im_equal = fitdiscrete(calnet1i_major, mcol_equal, datcol)
+aic(fitc1im_equal)
+#=
+Equal Rates Substitution Model with k=2,
+all rates equal to α=0.35124.
+rate matrix Q:
+           whitepigmented
+   white       *  0.3512
+pigmented  0.3512       *
+1 traits, 15 species
+on a network with 0 reticulations
+log-likelihood: -7.06296
+aic: 16.12591041589893
+=#
+
+# likelihood ratio, to compare fit on the major tree, vs fit on network
+x2 = 2*(loglikelihood(fitc1i_equal) - loglikelihood(fitc1im_equal)) # 1.1304148712324995
+aic(fitc1im_equal) - aic(fitc1i_equal) # 1.1304148712324995
+
 #--------------------------------------------------
 #     summary table
 #--------------------------------------------------
 
 allfit = [fitp1o, fitp1o_equal, fitp1i, fitp1i_equal,
           fitp2o, fitp2o_equal, fitp2i, fitp2i_equal,
+          fitp1om, fitp1om_equal, fitp1im, fitp1im_equal,
           fitc1o, fitc1o_equal, fitc1i, fitc1i_equal,
-          fitc2o, fitc2o_equal, fitc2i, fitc2i_equal]
+          fitc2o, fitc2o_equal, fitc2i, fitc2i_equal,
+          fitc1om, fitc1om_equal, fitc1im, fitc1im_equal]
 df = DataFrame(
-    trait = repeat(["pollinator","flower_color"], inner=8),
-    network_data = repeat(["primary","haplotype"], inner=4, outer=2),
-    network_sampling = repeat(["with_outgroups","only_ingroup"], inner=2, outer=4),
-    rates = repeat(["unconstrained","equal"], inner=1, outer=8),
+    trait = repeat(["pollinator","flower_color"], inner=12),
+    network_data = repeat(["primary","haplotype","primary"], inner=4, outer=2),
+    network_sampling = repeat(["with_outgroups","only_ingroup"], inner=2, outer=6),
+    reticulation = repeat(["net","net","tree"], inner=4, outer=2),
+    rates = repeat(["unconstrained","equal"], inner=1, outer=12),
     likelihood = [fit.loglik for fit in allfit],
     aic = [aic(fit) for fit in allfit],
-    bf = [geneflowBF(fit) for fit in allfit],
+    bf = map(fit -> fit.net.numHybrids == 1 ? geneflowBF(fit) : missing, allfit),
     rate1 = [fit.model.rate[1] for fit in allfit],
     rate2 = map(fit -> length(fit.model.rate)>1 ? fit.model.rate[2] : missing , allfit)
 )
 df |> CSV.write("traitanalysis/modelsummary.csv")
-
 
 #---------------------------------
 #      figure for manuscript
@@ -817,17 +978,15 @@ R"dev.off"()
 #      package version details
 #---------------------------------
 
+# analyses on 2019-09-30 used julia 1.2.0
 """
-(v1.1) pkg> status
-    Status `~/.julia/environments/v1.1/Project.toml`
-  [7e6ae17a] BioSequences v1.1.0
-  [3c28c6f8] BioSymbols v3.1.0
-  [336ed68f] CSV v0.5.5
-  [a93c6f00] DataFrames v0.18.3
-  [31c24e10] Distributions v0.20.0
-  [33ad39ac] PhyloNetworks v0.9.1
-  [c0d5b6db] PhyloPlots v0.2.0
-  [6f49c342] RCall v0.13.2
-  [2913bbd2] StatsBase v0.30.0
-  [3eaba693] StatsModels v0.5.0
+(traitanalysis) pkg> status
+    Status `~/Documents/private/concordance/adansonia/traitanalysis/Project.toml`
+  [336ed68f] CSV v0.5.12
+  [a93c6f00] DataFrames v0.19.4
+  [33ad39ac] PhyloNetworks v0.10.0
+  [c0d5b6db] PhyloPlots v0.2.1
+  [6f49c342] RCall v0.13.4
+  [2913bbd2] StatsBase v0.32.0
+  [10745b16] Statistics
 """
