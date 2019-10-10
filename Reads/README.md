@@ -1,5 +1,7 @@
 # Adansonia_HybSeq
 
+Adansonia sequencing sheet = accessions, TruSeq library name, index, sequence)
+
 Adapters.fa = file of adapter sequences for trimming
 
 GroverBaumWendelBaits.fa = Original baits file
