@@ -2,7 +2,7 @@
 
 ## Shared repository for all analyses for the paper:
 
-Ancient Introgression in the Baobabs, *Adansonia* (Bombacoideae; Malvaceae)
+Reticulate evolution helps explain apparent homoplasy in floral biology and pollination in baobabs (Adansonia; Bombacoideae; Malvaceae)
 
 ## Content
 
