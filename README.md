@@ -2,7 +2,7 @@
 
 ## Shared repository for all analyses for the paper:
 
-Reticulate evolution helps explain apparent homoplasy in floral biology and pollination in baobabs (Adansonia; Bombacoideae; Malvaceae)
+Reticulate evolution helps explain apparent homoplasy in floral biology and pollination in baobabs (Adansonia; Bombacoideae; Malvaceae) published in Systematic Biology. 
 
 ## Content
 
